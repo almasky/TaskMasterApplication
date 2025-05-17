@@ -1,6 +1,5 @@
 package com.maj.TaskMasterApplication.controller;
 
-import com.maj.TaskMasterApplication.model.Admin;
 import com.maj.TaskMasterApplication.model.LoginRequest;
 import com.maj.TaskMasterApplication.model.Task;
 import com.maj.TaskMasterApplication.model.User;
@@ -44,11 +43,6 @@ public class UserController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
-    }
-
-    @GetMapping("/users")
-    public List<User> getAllUsers() {
-        return userService.getAllUsers();
     }
 
     private User getCurrentUser(String authHeader) {
