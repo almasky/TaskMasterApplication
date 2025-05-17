@@ -33,6 +33,9 @@ public class Task {
 
     private LocalDateTime dueDate;
 
+
+    //Stores enum values as readable strings instead of numerical indexes
+    @Enumerated(EnumType.STRING)
     private Priority priority = Priority.MEDIUM;
 
     public enum Priority {
@@ -42,4 +45,11 @@ public class Task {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    //This ensures createdAt is set when the entity is persisted in the database.
+    //Ensures createdAt is automatically assigned when the entity is first saved in the database.
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 }
