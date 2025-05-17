@@ -2,7 +2,6 @@ package com.maj.TaskMasterApplication.service;
 
 import com.maj.TaskMasterApplication.model.Task;
 import com.maj.TaskMasterApplication.repository.TaskRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -14,7 +13,6 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
 
-    @Autowired
     public TaskService(TaskRepository taskRepository) {
         this.taskRepository = taskRepository;
     }
@@ -27,11 +25,28 @@ public class TaskService {
         return taskRepository.findById(id);
     }
 
-    public Task saveTask(Task task) {
+    public Task createTask(Task task) {
+        task.setCreatedAt(LocalDateTime.now()); // Ensuring timestamp is set
+        return taskRepository.save(task);
+    }
+
+    public Task updateTask(Long id, Task updatedTask) {
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
+
+        task.setTitle(updatedTask.getTitle());
+        task.setDescription(updatedTask.getDescription());
+        task.setCompleted(updatedTask.isCompleted());
+        task.setDueDate(updatedTask.getDueDate());
+        task.setPriority(updatedTask.getPriority());
+
         return taskRepository.save(task);
     }
 
     public void deleteTask(Long id) {
+        if (!taskRepository.existsById(id)) {
+            throw new RuntimeException("Task with ID " + id + " not found");
+        }
         taskRepository.deleteById(id);
     }
 
@@ -48,7 +63,9 @@ public class TaskService {
     }
 
     public List<Task> getOverdueTasks() {
-        return taskRepository.findByDueDateBefore(LocalDateTime.now());
+        return taskRepository.findByDueDateBefore(LocalDateTime.now())
+                .stream().sorted((t1, t2) -> t1.getDueDate().compareTo(t2.getDueDate()))
+                .toList();
     }
 
     public List<Task> getTasksByPriority(Task.Priority priority) {
