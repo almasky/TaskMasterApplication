@@ -24,173 +24,155 @@ public class AdminController {
     private final JwtUtil jwtUtil;
 
     // Admin authentication endpoints
+
     @PostMapping("/register")
-    public ResponseEntity<Admin> register(@Valid @RequestBody Admin admin) {
+    public ResponseEntity<Admin> registerAdmin(@Valid @RequestBody Admin admin) {
         Admin savedAdmin = adminService.register(admin);
-        return ResponseEntity.ok(savedAdmin);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedAdmin);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> loginAdmin(@RequestBody LoginRequest request) {
         try {
             Admin admin = adminService.login(request.getEmail(), request.getPassword());
             String token = jwtUtil.generateToken(admin.getEmail());
             return ResponseEntity.ok().body(
-                Map.of("token", token, "email", admin.getEmail(), "username", admin.getUsername())
+                Map.of("token", token, "email", admin.getEmail(), "role", "ADMIN")
             );
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    // Admin management endpoints
-    @GetMapping("/admins")
-    public List<Admin> getAllAdmins() {
-        return adminService.getAllAdmins();
-    }
-
-    @GetMapping("/admins/{id}")
-    public ResponseEntity<Admin> getAdminById(@PathVariable Long id) {
-        return adminService.getAdminById(id)
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PutMapping("/admins/{id}")
-    public ResponseEntity<Admin> updateAdmin(@PathVariable Long id, @Valid @RequestBody Admin admin) {
-        return adminService.getAdminById(id)
-            .map(existingAdmin -> {
-                admin.setId(id);
-                return ResponseEntity.ok(adminService.saveAdmin(admin));
-            })
-            .orElse(ResponseEntity.notFound().build());
-    }
-
-    @DeleteMapping("/admins/{id}")
-    public ResponseEntity<Void> deleteAdmin(@PathVariable Long id) {
-        return adminService.getAdminById(id)
-            .map(admin -> {
-                adminService.deleteAdmin(id);
-                return new ResponseEntity<Void>(HttpStatus.NO_CONTENT);
-            })
-            .orElse(ResponseEntity.notFound().build());
-    }
-
     // User management endpoints
+
     @GetMapping("/users")
-    public List<User> getAllUsers() {
-        return adminService.getAllUsers();
+    public ResponseEntity<List<User>> getAllUsers(@RequestHeader("Authorization") String authHeader) {
+        validateAdmin(authHeader);
+        List<User> users = adminService.getAllUsers();
+        return ResponseEntity.ok(users);
     }
 
     @GetMapping("/users/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+    public ResponseEntity<User> getUserById(@RequestHeader("Authorization") String authHeader,
+                                            @PathVariable Long id) {
+        validateAdmin(authHeader);
         return adminService.getUserById(id)
             .map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/users")
-    public ResponseEntity<User> createUser(@Valid @RequestBody User user) {
-        User savedUser = adminService.saveUser(user);
-        return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
+    public ResponseEntity<User> createUser(@RequestHeader("Authorization") String authHeader,
+                                           @Valid @RequestBody User user) {
+        validateAdmin(authHeader);
+        User createdUser = adminService.createUser(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
     }
 
     @PutMapping("/users/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Long id, @Valid @RequestBody User user) {
-        return adminService.getUserById(id)
-            .map(existingUser -> {
-                user.setId(id);
-                return ResponseEntity.ok(adminService.saveUser(user));
-            })
-            .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> updateUser(@RequestHeader("Authorization") String authHeader,
+                                        @PathVariable Long id,
+                                        @Valid @RequestBody User user) {
+        validateAdmin(authHeader);
+        try {
+            User updatedUser = adminService.updateUser(id, user);
+            return ResponseEntity.ok(updatedUser);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @DeleteMapping("/users/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        return adminService.getUserById(id)
-            .map(user -> {
-                adminService.deleteUser(id);
-                return new ResponseEntity<Void>(HttpStatus.NO_CONTENT);
-            })
-            .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> deleteUser(@RequestHeader("Authorization") String authHeader,
+                                        @PathVariable Long id) {
+        validateAdmin(authHeader);
+        try {
+            adminService.deleteUser(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     // Task management endpoints
+
     @GetMapping("/tasks")
-    public List<Task> getAllTasks() {
-        return adminService.getAllTasks();
+    public ResponseEntity<List<Task>> getAllTasks(@RequestHeader("Authorization") String authHeader) {
+        validateAdmin(authHeader);
+        List<Task> tasks = adminService.getAllTasks();
+        return ResponseEntity.ok(tasks);
     }
 
-    @GetMapping("/tasks/{id}")
-    public ResponseEntity<Task> getTaskById(@PathVariable Long id) {
-        return adminService.getTaskById(id)
+    @GetMapping("/users/{userId}/tasks")
+    public ResponseEntity<List<Task>> getUserTasks(@RequestHeader("Authorization") String authHeader,
+                                                   @PathVariable Long userId) {
+        validateAdmin(authHeader);
+        try {
+            List<Task> tasks = adminService.getTasksByUserId(userId);
+            return ResponseEntity.ok(tasks);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(List.of());
+        }
+    }
+
+    @GetMapping("/tasks/{taskId}")
+    public ResponseEntity<Task> getTaskById(@RequestHeader("Authorization") String authHeader,
+                                            @PathVariable Long taskId) {
+        validateAdmin(authHeader);
+        return adminService.getTaskById(taskId)
             .map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping("/tasks")
-    public ResponseEntity<Task> createTask(@Valid @RequestBody Task task) {
-        Task savedTask = adminService.saveTask(task);
-        return new ResponseEntity<>(savedTask, HttpStatus.CREATED);
+    @PostMapping("/users/{userId}/tasks")
+    public ResponseEntity<?> createTaskForUser(@RequestHeader("Authorization") String authHeader,
+                                               @PathVariable Long userId,
+                                               @Valid @RequestBody Task task) {
+        validateAdmin(authHeader);
+        try {
+            Task createdTask = adminService.createTaskForUser(userId, task);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdTask);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
-    @PutMapping("/tasks/{id}")
-    public ResponseEntity<Task> updateTask(@PathVariable Long id, @Valid @RequestBody Task task) {
-        return adminService.getTaskById(id)
-            .map(existingTask -> {
-                task.setId(id);
-                return ResponseEntity.ok(adminService.saveTask(task));
-            })
-            .orElse(ResponseEntity.notFound().build());
+    @PutMapping("/tasks/{taskId}")
+    public ResponseEntity<?> updateTask(@RequestHeader("Authorization") String authHeader,
+                                        @PathVariable Long taskId,
+                                        @Valid @RequestBody Task task) {
+        validateAdmin(authHeader);
+        try {
+            Task updatedTask = adminService.updateTask(taskId, task);
+            return ResponseEntity.ok(updatedTask);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
-    @DeleteMapping("/tasks/{id}")
-    public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
-        return adminService.getTaskById(id)
-            .map(task -> {
-                adminService.deleteTask(id);
-                return new ResponseEntity<Void>(HttpStatus.NO_CONTENT);
-            })
-            .orElse(ResponseEntity.notFound().build());
+    @DeleteMapping("/tasks/{taskId}")
+    public ResponseEntity<?> deleteTask(@RequestHeader("Authorization") String authHeader,
+                                        @PathVariable Long taskId) {
+        validateAdmin(authHeader);
+        try {
+            adminService.deleteTask(taskId);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
-    @GetMapping("/tasks/completed")
-    public List<Task> getCompletedTasks() {
-        return adminService.getCompletedTasks();
-    }
+    // Helper method to validate admin from JWT token
+    private void validateAdmin(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Invalid or missing authorization token");
+        }
 
-    @GetMapping("/tasks/pending")
-    public List<Task> getPendingTasks() {
-        return adminService.getPendingTasks();
-    }
+        String token = authHeader.replace("Bearer ", "");
+        String email = jwtUtil.extractEmail(token);
 
-    @GetMapping("/tasks/search")
-    public List<Task> searchTasks(@RequestParam String keyword) {
-        return adminService.searchTasks(keyword);
-    }
-
-    @GetMapping("/tasks/overdue")
-    public List<Task> getOverdueTasks() {
-        return adminService.getOverdueTasks();
-    }
-
-    @GetMapping("/tasks/priority/{priority}")
-    public List<Task> getTasksByPriority(@PathVariable Task.Priority priority) {
-        return adminService.getTasksByPriority(priority);
-    }
-
-    @GetMapping("/tasks/user/{userId}")
-    public List<Task> getTasksByUserId(@PathVariable Long userId) {
-        return adminService.getTasksByUserId(userId);
-    }
-
-    @PatchMapping("/tasks/{id}/complete")
-    public ResponseEntity<Task> toggleTaskCompletion(@PathVariable Long id) {
-        return adminService.getTaskById(id)
-            .map(existingTask -> {
-                existingTask.setCompleted(!existingTask.isCompleted());
-                return ResponseEntity.ok(adminService.saveTask(existingTask));
-            })
-            .orElse(ResponseEntity.notFound().build());
+        adminService.getAdminByEmail(email)
+            .orElseThrow(() -> new IllegalArgumentException("Unauthorized: Admin access required"));
     }
 }
