@@ -26,6 +26,7 @@ public class UserController {
     private final UserRepository userRepository;
     private final TaskRepository taskRepository;
 
+    //User methods
     @PostMapping("/register")
     public ResponseEntity<User> register(@Valid @RequestBody User user) {
         User savedUser = userService.register(user);
