@@ -1,60 +1,35 @@
 package com.maj.TaskMasterApplication.service;
 
-import com.maj.TaskMasterApplication.model.User;
-import com.maj.TaskMasterApplication.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
+import com.maj.TaskMasterApplication.dto.AuthResponseDto;
+import com.maj.TaskMasterApplication.dto.LoginRequestDto;
+import com.maj.TaskMasterApplication.dto.SignUpRequestDto;
+import com.maj.TaskMasterApplication.dto.UserResponseDto;
+// import com.maj.TaskMasterApplication.model.User; // If needed for internal methods returning User entity
 
-import java.util.List;
-import java.util.Optional;
+public interface UserService {
 
-@Service
-@RequiredArgsConstructor
-public class UserService {
+    /**
+     * Registers a new user.
+     * @param signUpRequestDto DTO containing user registration details.
+     * @return AuthResponseDto containing JWT token and user details.
+     */
+    AuthResponseDto registerUser(SignUpRequestDto signUpRequestDto);
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    /**
+     * Authenticates a user and provides a JWT token.
+     * @param loginRequestDto DTO containing login credentials.
+     * @return AuthResponseDto containing JWT token and user details.
+     */
+    AuthResponseDto loginUser(LoginRequestDto loginRequestDto);
 
-    public User register(User user) {
-        if (userRepository.existsByEmail(user.getEmail())) {
-            throw new IllegalArgumentException("Email already taken");
-        }
+    /**
+     * Finds a user by their ID.
+     * @param userId The ID of the user.
+     * @return UserResponseDto for the found user.
+     */
+    UserResponseDto getUserById(Long userId); // Primarily for internal use or admin scenarios
 
-         if (userRepository.existsByUsername(user.getUsername())) {
-             throw new IllegalArgumentException("Username already taken");
-         }
-
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        return userRepository.save(user);
-    }
-
-    public User login(String email, String rawPassword) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
-
-        if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
-            throw new IllegalArgumentException("Invalid email or password");
-        }
-
-        return user;
-    }
-
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
-    }
-
-    public Optional<User> getUserById(Long id) {
-        return userRepository.findById(id);
-    }
-
-    public Optional<User> getUserByUsername(String username) {
-        return userRepository.findByUsername(username);
-    }
-
-    public Optional<User> getUserByEmail(String email) {
-        return userRepository.findByEmail(email);
-    }
-
-
+    // Potentially more methods for user management by admins:
+    // List<UserResponseDto> getAllUsers();
+    // UserResponseDto updateUserRole(Long userId, Roles newRole);
 }

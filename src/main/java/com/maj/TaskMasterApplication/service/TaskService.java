@@ -1,74 +1,54 @@
 package com.maj.TaskMasterApplication.service;
 
-import com.maj.TaskMasterApplication.model.Task;
-import com.maj.TaskMasterApplication.repository.TaskRepository;
-import org.springframework.stereotype.Service;
+import com.maj.TaskMasterApplication.dto.TaskRequestDto;
+import com.maj.TaskMasterApplication.dto.TaskResponseDto;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
-@Service
-public class TaskService {
+public interface TaskService {
 
-    private final TaskRepository taskRepository;
+    /**
+     * Creates a new task for a specified user.
+     * @param taskRequestDto DTO containing task details.
+     * @param userId The ID of the user for whom the task is being created.
+     * @return The created task as a DTO.
+     */
+    TaskResponseDto createTask(TaskRequestDto taskRequestDto, Long userId);
 
-    public TaskService(TaskRepository taskRepository) {
-        this.taskRepository = taskRepository;
-    }
+    /**
+     * Retrieves a specific task by its ID.
+     * Ensures the task belongs to the requesting user or the user is an admin.
+     * @param taskId The ID of the task to retrieve.
+     * @param userId The ID of the user making the request.
+     * @return The task DTO if found and authorized.
+     */
+    TaskResponseDto getTaskById(Long taskId, Long userId); // Consider adding requesting user details for auth checks
 
-    public List<Task> getAllTasks() {
-        return taskRepository.findAll();
-    }
+    /**
+     * Retrieves all tasks for a specific user.
+     * @param userId The ID of the user whose tasks are to be retrieved.
+     * @return A list of task DTOs.
+     */
+    List<TaskResponseDto> getAllTasksByUserId(Long userId);
 
-    public Optional<Task> getTaskById(Long id) {
-        return taskRepository.findById(id);
-    }
+    /**
+     * Updates an existing task.
+     * Ensures the task belongs to the requesting user or the user is an admin.
+     * @param taskId The ID of the task to update.
+     * @param taskRequestDto DTO containing updated task details.
+     * @param userId The ID of the user making the request.
+     * @return The updated task DTO.
+     */
+    TaskResponseDto updateTask(Long taskId, TaskRequestDto taskRequestDto, Long userId); // Consider requesting user
 
-    public Task createTask(Task task) {
-        task.setCreatedAt(LocalDateTime.now()); // Ensuring timestamp is set
-        return taskRepository.save(task);
-    }
+    /**
+     * Deletes a task by its ID.
+     * Ensures the task belongs to the requesting user or the user is an admin.
+     * @param taskId The ID of the task to delete.
+     * @param userId The ID of the user making the request.
+     */
+    void deleteTask(Long taskId, Long userId); // Consider requesting user
 
-    public Task updateTask(Long id, Task updatedTask) {
-        Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
-
-        task.setTitle(updatedTask.getTitle());
-        task.setDescription(updatedTask.getDescription());
-        task.setCompleted(updatedTask.isCompleted());
-        task.setDueDate(updatedTask.getDueDate());
-        task.setPriority(updatedTask.getPriority());
-
-        return taskRepository.save(task);
-    }
-
-    public void deleteTask(Long id) {
-        if (!taskRepository.existsById(id)) {
-            throw new RuntimeException("Task with ID " + id + " not found");
-        }
-        taskRepository.deleteById(id);
-    }
-
-    public List<Task> getCompletedTasks() {
-        return taskRepository.findByCompleted(true);
-    }
-
-    public List<Task> getPendingTasks() {
-        return taskRepository.findByCompleted(false);
-    }
-
-    public List<Task> searchTasks(String keyword) {
-        return taskRepository.findByTitleContainingIgnoreCase(keyword);
-    }
-
-    public List<Task> getOverdueTasks() {
-        return taskRepository.findByDueDateBefore(LocalDateTime.now())
-                .stream().sorted((t1, t2) -> t1.getDueDate().compareTo(t2.getDueDate()))
-                .toList();
-    }
-
-    public List<Task> getTasksByPriority(Task.Priority priority) {
-        return taskRepository.findByPriority(priority);
-    }
+    // Optional: Methods for admins to manage any task, or more complex queries
+    // List<TaskResponseDto> getAllTasks(); // For an admin
 }

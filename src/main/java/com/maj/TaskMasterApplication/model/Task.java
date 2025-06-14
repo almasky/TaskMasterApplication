@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -29,27 +30,27 @@ public class Task {
 
     private boolean completed = false;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt = LocalDateTime.now(); // Will be overridden by @PrePersist on new entities
 
     private LocalDateTime dueDate;
 
-
-    //Stores enum values as readable strings instead of numerical indexes
     @Enumerated(EnumType.STRING)
-    private Priority priority = Priority.MEDIUM;
-
-    public enum Priority {
-        LOW, MEDIUM, HIGH
-    }
+    private Priority priority = Priority.MEDIUM; // This now refers to the top-level Priority enum
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    //This ensures createdAt is set when the entity is persisted in the database.
-    //Ensures createdAt is automatically assigned when the entity is first saved in the database.
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        if (createdAt == null) { // Good practice to check if it's already set
+            createdAt = LocalDateTime.now();
+        }
+        // Ensure default priority if not set
+        if (priority == null) {
+            priority = Priority.MEDIUM;
+        }
+        // Ensure default completed status if not set (though boolean defaults to false)
+        // completed = false; // Redundant as boolean primitive defaults to false
     }
 }
